@@ -4,6 +4,15 @@
 #include <ctime>
 #include <chrono>
 #include <vector>
+#include <mutex>
+
+struct result{
+    std::string name;
+    double time;
+};
+
+std::vector<result> results;
+std::mutex results_mtx;
 
 class Swimmer{
     double distance = 100;
@@ -34,15 +43,13 @@ public:
     }
     ~Swimmer(){
         if(mThread.joinable()) mThread.join();
-        std::cout << name << " finished with time "<< swimTime <<std::endl;
+     //   std::cout << name << " finished with time "<< swimTime <<std::endl;
     }
 
     void run(){
         mThread = std::thread(&Swimmer::swimmingInfo,this);
     }
-    void finish(){
-        mThread = std::thread(&Swimmer::swimmingInfo,this);
-    }
+
 
     void swimmingInfo(){
         std::time_t beginTime = std::time(nullptr);
@@ -54,9 +61,17 @@ public:
                 std::cout << "swimmer " << name << " swam " << (realTime - beginTime) * speed << std::endl;
             }
         }while(speed*(realTime - beginTime) <= distance);
-
         swimTime = distance/speed;
-        std::cout << name << " finished with time "<< swimTime <<std::endl;
+       // std::cout << name << " finished with time "<< swimTime <<std::endl;
+
+
+        result res;
+        res.name = name;
+        res.time = swimTime;
+        results_mtx.lock();
+        results.push_back(res);
+        results_mtx.unlock();
+
 
     }
 };
@@ -83,15 +98,17 @@ int main() {
 
 
 
-   // for(int i = 0; i < swimmers.size(); i++){
-   //     std::cout << swimmers[i]->getName() << " finished with time " << swimmers[i]->getSwimTime()<<
-   //     " seconds " <<std::endl;
-   // }
 
 
     for(int i = 0; i < swimmers.size(); i++){
         delete swimmers[i];
     }
+
+     for(int i = 0; i < results.size(); i++){
+        std::cout << results[i].name << " finished with time " << results[i].time <<
+         " seconds " <<std::endl;
+     }
+
 
 
     return 0;
